@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vida Financeira 5.0</title>
+  <title>Vida Financeira 5.1</title>
   <style>
     :root {
       --bg: #f6f2ff;
@@ -310,8 +310,8 @@
   <header>
     <div class="top">
       <div>
-        <h1>Vida Financeira 5.0</h1>
-        <p class="subtitle">Protótipo de app financeiro com relacionamento, modo casal, metas, cartões, contas a vencer, gráficos e assistente de economia.</p>
+        <h1>Vida Financeira 5.1</h1>
+        <p class="subtitle">Protótipo de app financeiro com importação compatível com backups antigos, relacionamento, modo casal, metas, cartões, contas a vencer, gráficos e assistente de economia.</p>
       </div>
       <div class="top-controls">
         <div class="glass">
@@ -952,21 +952,186 @@
       download(blob, `backup-vida-financeira-${currentMonth}.json`);
     }
 
+    function normalizeImportedBackup(imported) {
+      // Formato atual v5
+      if (imported && imported.months) {
+        if (!imported.couple) {
+          imported.couple = { enabled: false, personA: "Eu", personB: "Parceiro(a)" };
+        }
+        if (!imported.theme) {
+          imported.theme = "light";
+        }
+        return imported;
+      }
+
+      // Formato antigo v2/v3 em português: { meses: { ... } }
+      if (imported && imported.meses) {
+        const converted = {
+          theme: imported.theme || "light",
+          couple: { enabled: false, personA: "Eu", personB: "Parceiro(a)" },
+          months: {}
+        };
+
+        Object.keys(imported.meses).forEach(monthKey => {
+          const oldMonth = imported.meses[monthKey] || {};
+
+          const newMonth = {
+            monthGoal: Number(oldMonth.meta || oldMonth.monthGoal || 0),
+            notes: oldMonth.observacoes || oldMonth.notes || "",
+            incomes: [],
+            expenses: [],
+            loans: [],
+            cards: [],
+            goals: []
+          };
+
+          // receitas antigas
+          (oldMonth.receitas || oldMonth.incomes || []).forEach(item => {
+            newMonth.incomes.push({
+              desc: item.desc || item.descricao || item.description || "Receita",
+              value: Number(item.valor || item.value || 0),
+              owner: item.owner || "Eu"
+            });
+          });
+
+          // gastos fixos antigos
+          (oldMonth.fixos || []).forEach(item => {
+            newMonth.expenses.push({
+              category: item.categoria || item.category || "Moradia",
+              desc: item.desc || item.descricao || item.description || "Gasto fixo",
+              value: Number(item.valor || item.value || 0),
+              owner: item.owner || "Eu"
+            });
+          });
+
+          // gastos variáveis antigos
+          (oldMonth.variaveis || []).forEach(item => {
+            newMonth.expenses.push({
+              category: item.categoria || item.category || "Outros",
+              desc: item.desc || item.descricao || item.description || "Gasto variável",
+              value: Number(item.valor || item.value || 0),
+              owner: item.owner || "Eu"
+            });
+          });
+
+          // gastos em formato novo/parcial
+          (oldMonth.expenses || []).forEach(item => {
+            newMonth.expenses.push({
+              category: item.category || item.categoria || "Outros",
+              desc: item.desc || item.descricao || item.description || "Gasto",
+              value: Number(item.value || item.valor || 0),
+              owner: item.owner || "Eu"
+            });
+          });
+
+          // empréstimos antigos
+          (oldMonth.emprestimos || oldMonth.loans || []).forEach(item => {
+            newMonth.loans.push({
+              name: item.nome || item.name || item.credor || "Empréstimo",
+              installment: Number(item.parcela || item.installment || 0),
+              left: Number(item.restantes || item.qtd || item.left || 1),
+              due: Number(item.vencimento || item.due || 0)
+            });
+          });
+
+          // cartões antigos
+          (oldMonth.cartoes || oldMonth.cards || []).forEach(item => {
+            newMonth.cards.push({
+              name: item.nome || item.name || "Cartão",
+              bill: Number(item.valor || item.bill || 0),
+              limit: Number(item.limite || item.limit || 0),
+              due: Number(item.venc || item.due || 0)
+            });
+          });
+
+          // metas antigas
+          (oldMonth.goals || oldMonth.metas || []).forEach(item => {
+            newMonth.goals.push({
+              name: item.name || item.nome || "Meta",
+              target: Number(item.target || item.valorObjetivo || item.objetivo || 0),
+              saved: Number(item.saved || item.guardado || 0),
+              monthly: Number(item.monthly || item.mensal || 0)
+            });
+          });
+
+          converted.months[monthKey] = newMonth;
+        });
+
+        return converted;
+      }
+
+      // Caso o arquivo seja apenas um mês exportado manualmente
+      if (imported && (imported.receitas || imported.fixos || imported.variaveis || imported.emprestimos || imported.cartoes)) {
+        const converted = {
+          theme: "light",
+          couple: { enabled: false, personA: "Eu", personB: "Parceiro(a)" },
+          months: {}
+        };
+
+        converted.months[currentMonth] = {
+          monthGoal: Number(imported.meta || 0),
+          notes: imported.observacoes || "",
+          incomes: (imported.receitas || []).map(item => ({
+            desc: item.desc || item.descricao || "Receita",
+            value: Number(item.valor || item.value || 0),
+            owner: "Eu"
+          })),
+          expenses: [
+            ...(imported.fixos || []).map(item => ({
+              category: item.categoria || "Moradia",
+              desc: item.desc || item.descricao || "Gasto fixo",
+              value: Number(item.valor || item.value || 0),
+              owner: "Eu"
+            })),
+            ...(imported.variaveis || []).map(item => ({
+              category: item.categoria || "Outros",
+              desc: item.desc || item.descricao || "Gasto variável",
+              value: Number(item.valor || item.value || 0),
+              owner: "Eu"
+            }))
+          ],
+          loans: (imported.emprestimos || []).map(item => ({
+            name: item.nome || item.name || "Empréstimo",
+            installment: Number(item.parcela || item.installment || 0),
+            left: Number(item.restantes || item.qtd || item.left || 1),
+            due: Number(item.vencimento || item.due || 0)
+          })),
+          cards: (imported.cartoes || []).map(item => ({
+            name: item.nome || item.name || "Cartão",
+            bill: Number(item.valor || item.bill || 0),
+            limit: Number(item.limite || item.limit || 0),
+            due: Number(item.venc || item.due || 0)
+          })),
+          goals: []
+        };
+
+        return converted;
+      }
+
+      throw new Error("Backup inválido");
+    }
+
     function importJSON(event) {
       const file = event.target.files[0];
       if (!file) return;
+
       const reader = new FileReader();
+
       reader.onload = event => {
         try {
-          db = JSON.parse(event.target.result);
-          if (!db.months) throw new Error("Backup inválido");
-          saveData(false);
+          const imported = JSON.parse(event.target.result);
+          const normalized = normalizeImportedBackup(imported);
+
+          db = normalized;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
           render();
-          alert("Backup importado!");
-        } catch {
-          alert("Não consegui importar. Verifique se o arquivo é um backup JSON válido.");
+
+          alert("Backup importado com sucesso!");
+        } catch (error) {
+          alert("Não consegui importar. Esse arquivo precisa ser um backup JSON exportado pelo app. Se for um CSV ou HTML, ele não entra pelo botão de backup JSON.");
         }
       };
+
       reader.readAsText(file);
     }
 
