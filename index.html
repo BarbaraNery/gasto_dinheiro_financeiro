@@ -17,20 +17,18 @@
       --cinza: #777;
       --borda: #e6ddfb;
       --fundo: #f6f2ff;
-      --card: #ffffff;
     }
 
     * {
       box-sizing: border-box;
-      font-family: Inter, Arial, Helvetica, sans-serif;
+      font-family: Arial, Helvetica, sans-serif;
     }
 
     body {
       margin: 0;
-      background:
-        radial-gradient(circle at top left, rgba(255, 79, 163, 0.16), transparent 34%),
-        radial-gradient(circle at top right, rgba(109, 53, 223, 0.16), transparent 36%),
-        var(--fundo);
+      background: radial-gradient(circle at top left, rgba(255, 79, 163, 0.16), transparent 34%),
+                  radial-gradient(circle at top right, rgba(109, 53, 223, 0.16), transparent 36%),
+                  var(--fundo);
       color: var(--texto);
     }
 
@@ -56,7 +54,6 @@
     h1 {
       margin: 0;
       font-size: 34px;
-      letter-spacing: -0.8px;
     }
 
     .subtitle {
@@ -70,7 +67,6 @@
       border: 1px solid rgba(255,255,255,.28);
       padding: 14px;
       border-radius: 18px;
-      backdrop-filter: blur(8px);
       min-width: 260px;
     }
 
@@ -102,12 +98,12 @@
       margin-bottom: 22px;
     }
 
-    .card {
-      background: rgba(255,255,255,.92);
-      border: 1px solid rgba(230,221,251,.9);
+    .card, section {
+      background: rgba(255,255,255,.95);
+      border: 1px solid var(--borda);
       border-radius: 24px;
       padding: 20px;
-      box-shadow: 0 10px 28px rgba(63, 27, 134, 0.09);
+      box-shadow: 0 10px 28px rgba(63, 27, 134, 0.08);
     }
 
     .card h3 {
@@ -121,7 +117,6 @@
     .valor {
       font-size: 28px;
       font-weight: 800;
-      letter-spacing: -0.7px;
     }
 
     .positivo { color: var(--verde); }
@@ -140,12 +135,7 @@
     }
 
     section {
-      background: rgba(255,255,255,.95);
-      border: 1px solid var(--borda);
-      border-radius: 24px;
-      padding: 20px;
       margin-bottom: 20px;
-      box-shadow: 0 10px 28px rgba(63, 27, 134, 0.08);
     }
 
     section h2 {
@@ -177,11 +167,6 @@
       resize: vertical;
     }
 
-    input:focus, select:focus, textarea:focus {
-      border-color: var(--roxo);
-      box-shadow: 0 0 0 3px rgba(109,53,223,.12);
-    }
-
     button {
       border: none;
       border-radius: 14px;
@@ -190,11 +175,9 @@
       padding: 12px 15px;
       font-weight: 800;
       cursor: pointer;
-      transition: .15s ease;
     }
 
     button:hover {
-      transform: translateY(-1px);
       filter: brightness(.96);
     }
 
@@ -241,7 +224,7 @@
       margin: 22px 0;
     }
 
-    .barra {
+    .barra, .ranking-barra {
       height: 12px;
       background: #ede7fb;
       border-radius: 999px;
@@ -249,7 +232,7 @@
       margin: 10px 0;
     }
 
-    .barra div {
+    .barra div, .ranking-barra div {
       height: 100%;
       width: 0%;
       background: linear-gradient(90deg, var(--roxo), var(--rosa));
@@ -263,7 +246,7 @@
       line-height: 1.45;
     }
 
-    .alerta {
+    .alerta, .maior-gasto {
       padding: 14px;
       border-radius: 18px;
       background: #fff7df;
@@ -271,6 +254,7 @@
       color: #6e4c00;
       margin-top: 10px;
       font-size: 14px;
+      line-height: 1.45;
     }
 
     .ok {
@@ -283,6 +267,27 @@
       background: #fff0f0;
       border-color: #ffc6c6;
       color: #8e2525;
+    }
+
+    .maior-gasto {
+      background: #f4edff;
+      border-color: var(--borda);
+      color: var(--roxo-escuro);
+      font-weight: 700;
+      margin-bottom: 16px;
+    }
+
+    .ranking-item {
+      margin-bottom: 14px;
+    }
+
+    .ranking-topo {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 14px;
+      margin-bottom: 6px;
+      font-weight: 700;
     }
 
     .pill {
@@ -315,7 +320,7 @@
     <div class="topo">
       <div>
         <h1>Controle Financeiro Pro</h1>
-        <p class="subtitle">Dashboard da Babs para salário, namoro, contas fixas, cartões, empréstimos e metas 💜</p>
+        <p class="subtitle">Dashboard da Babs para salário, namoro, contas fixas, cartões, empréstimos, metas e ranking de gastos 💜</p>
       </div>
       <div class="mes-box">
         <label>Mês de controle</label>
@@ -326,22 +331,10 @@
 
   <main>
     <div class="grid-dashboard">
-      <div class="card">
-        <h3>Receitas</h3>
-        <div class="valor" id="cardReceitas">R$ 0,00</div>
-      </div>
-      <div class="card">
-        <h3>Gastos do mês</h3>
-        <div class="valor" id="cardGastos">R$ 0,00</div>
-      </div>
-      <div class="card">
-        <h3>Empréstimos / Cartões</h3>
-        <div class="valor" id="cardDividas">R$ 0,00</div>
-      </div>
-      <div class="card">
-        <h3>Saldo final</h3>
-        <div class="valor positivo" id="cardSaldo">R$ 0,00</div>
-      </div>
+      <div class="card"><h3>Receitas</h3><div class="valor" id="cardReceitas">R$ 0,00</div></div>
+      <div class="card"><h3>Gastos do mês</h3><div class="valor" id="cardGastos">R$ 0,00</div></div>
+      <div class="card"><h3>Empréstimos / Cartões</h3><div class="valor" id="cardDividas">R$ 0,00</div></div>
+      <div class="card"><h3>Saldo final</h3><div class="valor positivo" id="cardSaldo">R$ 0,00</div></div>
     </div>
 
     <section>
@@ -363,10 +356,7 @@
             <input id="receitaValor" type="number" step="0.01" placeholder="Valor" />
             <button onclick="addReceita()">Adicionar</button>
           </div>
-          <table>
-            <thead><tr><th>Descrição</th><th>Valor</th><th>Ação</th></tr></thead>
-            <tbody id="tReceitas"></tbody>
-          </table>
+          <table><thead><tr><th>Descrição</th><th>Valor</th><th>Ação</th></tr></thead><tbody id="tReceitas"></tbody></table>
         </section>
 
         <section>
@@ -380,10 +370,7 @@
             <input id="fixoValor" type="number" step="0.01" placeholder="Valor" />
             <button onclick="addFixo()">Adicionar</button>
           </div>
-          <table>
-            <thead><tr><th>Categoria</th><th>Descrição</th><th>Valor</th><th>Ação</th></tr></thead>
-            <tbody id="tFixos"></tbody>
-          </table>
+          <table><thead><tr><th>Categoria</th><th>Descrição</th><th>Valor</th><th>Ação</th></tr></thead><tbody id="tFixos"></tbody></table>
         </section>
 
         <section>
@@ -397,10 +384,7 @@
             <input id="varValor" type="number" step="0.01" placeholder="Valor" />
             <button onclick="addVariavel()">Adicionar</button>
           </div>
-          <table>
-            <thead><tr><th>Categoria</th><th>Descrição</th><th>Valor</th><th>Ação</th></tr></thead>
-            <tbody id="tVariaveis"></tbody>
-          </table>
+          <table><thead><tr><th>Categoria</th><th>Descrição</th><th>Valor</th><th>Ação</th></tr></thead><tbody id="tVariaveis"></tbody></table>
         </section>
       </div>
 
@@ -413,10 +397,7 @@
             <input id="empRestantes" type="number" step="1" placeholder="Parcelas restantes" />
             <button class="btn-rosa" onclick="addEmprestimo()">Adicionar</button>
           </div>
-          <table>
-            <thead><tr><th>Credor</th><th>Parcela</th><th>Faltam</th><th>Total</th><th></th></tr></thead>
-            <tbody id="tEmprestimos"></tbody>
-          </table>
+          <table><thead><tr><th>Credor</th><th>Parcela</th><th>Faltam</th><th>Total</th><th></th></tr></thead><tbody id="tEmprestimos"></tbody></table>
         </section>
 
         <section>
@@ -427,23 +408,25 @@
             <input id="cartaoVenc" type="number" min="1" max="31" placeholder="Dia venc." />
             <button class="btn-rosa" onclick="addCartao()">Adicionar</button>
           </div>
-          <table>
-            <thead><tr><th>Cartão</th><th>Fatura</th><th>Venc.</th><th></th></tr></thead>
-            <tbody id="tCartoes"></tbody>
-          </table>
+          <table><thead><tr><th>Cartão</th><th>Fatura</th><th>Venc.</th><th></th></tr></thead><tbody id="tCartoes"></tbody></table>
+        </section>
+
+        <section>
+          <h2>📊 Onde eu mais gasto</h2>
+          <div id="maiorGasto" class="maior-gasto">Preencha seus gastos para ver o maior gasto do mês.</div>
+          <div id="rankingGastos"></div>
+          <p class="small">Ranking por categoria considerando gastos fixos, variáveis, cartões e empréstimos.</p>
         </section>
 
         <section>
           <h2>🧠 Resumo inteligente</h2>
           <div id="analise" class="alerta ok">Preencha seus dados para ver a análise.</div>
-          <p class="small">
-            Dica: use “Exportar backup JSON” para guardar seus dados fora do navegador.
-          </p>
+          <p class="small">Dica: use “Exportar backup JSON” para guardar seus dados fora do navegador.</p>
         </section>
 
         <section>
           <h2>📝 Observações do mês</h2>
-          <textarea id="observacoes" placeholder="Ex: esse mês tive gasto extra com presente, viagem, médico..." oninput="salvarTudo(false)"></textarea>
+          <textarea id="observacoes" placeholder="Ex: esse mês tive gasto extra com presente, viagem, médico..."></textarea>
         </section>
       </div>
     </div>
@@ -461,8 +444,7 @@
   </main>
 
   <script>
-    const KEY = "controleFinanceiroProBabs_v2";
-
+    const KEY = "controleFinanceiroProBabs_v3";
     const hoje = new Date();
     const mesPadrao = hoje.toISOString().slice(0,7);
 
@@ -470,15 +452,7 @@
     let mesAtual = mesPadrao;
 
     function modeloMes() {
-      return {
-        meta: 0,
-        observacoes: "",
-        receitas: [],
-        fixos: [],
-        variaveis: [],
-        emprestimos: [],
-        cartoes: []
-      };
+      return { meta: 0, observacoes: "", receitas: [], fixos: [], variaveis: [], emprestimos: [], cartoes: [] };
     }
 
     function mes() {
@@ -495,6 +469,7 @@
     }
 
     function salvarTudo(aviso = true) {
+      mes().observacoes = document.getElementById("observacoes") ? document.getElementById("observacoes").value : mes().observacoes;
       localStorage.setItem(KEY, JSON.stringify(banco));
       if (aviso) alert("Salvo no navegador!");
       render();
@@ -589,6 +564,55 @@
       document.getElementById(id).innerHTML = linhas.join("");
     }
 
+    function rankingPorCategoria() {
+      const m = mes();
+      const mapa = {};
+
+      function add(cat, valor) {
+        mapa[cat] = (mapa[cat] || 0) + Number(valor || 0);
+      }
+
+      m.fixos.forEach(i => add(i.categoria || "Gastos Fixos", i.valor));
+      m.variaveis.forEach(i => add(i.categoria || "Gastos Variáveis", i.valor));
+      m.emprestimos.forEach(i => add("Empréstimos", i.parcela));
+      m.cartoes.forEach(i => add("Cartão de crédito", i.valor));
+
+      return Object.entries(mapa)
+        .map(([categoria, valor]) => ({ categoria, valor }))
+        .filter(i => i.valor > 0)
+        .sort((a, b) => b.valor - a.valor);
+    }
+
+    function renderRankingGastos() {
+      const ranking = rankingPorCategoria();
+      const totalGeral = ranking.reduce((s, i) => s + i.valor, 0);
+      const boxMaior = document.getElementById("maiorGasto");
+      const lista = document.getElementById("rankingGastos");
+
+      if (!ranking.length) {
+        boxMaior.innerText = "Preencha seus gastos para ver o maior gasto do mês.";
+        lista.innerHTML = "";
+        return;
+      }
+
+      const maior = ranking[0];
+      const pctMaior = totalGeral > 0 ? (maior.valor / totalGeral) * 100 : 0;
+      boxMaior.innerText = `Seu maior gasto este mês é: ${maior.categoria} — ${moeda(maior.valor)} (${pctMaior.toFixed(0)}% dos gastos).`;
+
+      lista.innerHTML = ranking.map(item => {
+        const pct = totalGeral > 0 ? (item.valor / totalGeral) * 100 : 0;
+        return `
+          <div class="ranking-item">
+            <div class="ranking-topo">
+              <span>${item.categoria}</span>
+              <span>${moeda(item.valor)} • ${pct.toFixed(0)}%</span>
+            </div>
+            <div class="ranking-barra"><div style="width:${pct}%"></div></div>
+          </div>
+        `;
+      }).join("");
+    }
+
     function render() {
       document.getElementById("mesAtual").value = mesAtual;
       const m = mes();
@@ -647,11 +671,13 @@
         analise.className = comprometido > 80 ? "alerta" : "alerta ok";
         analise.innerText = `Você comprometeu ${comprometido.toFixed(0)}% da renda. Saldo previsto: ${moeda(t.saldo)}.`;
       }
+
+      renderRankingGastos();
     }
 
     document.getElementById("observacoes").addEventListener("input", function() {
       mes().observacoes = this.value;
-      salvarTudo(false);
+      localStorage.setItem(KEY, JSON.stringify(banco));
     });
 
     function exportarJSON() {
