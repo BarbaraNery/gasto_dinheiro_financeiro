@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Vida Financeira 5.1</title>
+  <title>Vida Financeira 5.3</title>
   <style>
     :root {
       --bg: #f6f2ff;
@@ -310,8 +310,8 @@
   <header>
     <div class="top">
       <div>
-        <h1>Vida Financeira 5.1</h1>
-        <p class="subtitle">Protótipo de app financeiro com importação compatível com backups antigos, relacionamento, modo casal, metas, cartões, contas a vencer, gráficos e assistente de economia.</p>
+        <h1>Vida Financeira 5.3</h1>
+        <p class="subtitle">Protótipo de app financeiro com importação reforçada para backups antigos, relacionamento, modo casal, metas, cartões, contas a vencer, gráficos e assistente de economia.</p>
       </div>
       <div class="top-controls">
         <div class="glass">
@@ -402,19 +402,54 @@
             <h2>💸 Gastos por área da vida</h2>
             <div class="form-grid">
               <select id="expenseCategory">
-                <option>Moradia</option><option>Relacionamento</option><option>Pets</option><option>Alimentação</option>
-                <option>Transporte</option><option>Estudos</option><option>Saúde</option><option>Lazer</option><option>Casa</option><option>Outros</option>
+                <option>Casa</option><option>Relacionamento</option><option>Pets</option><option>Alimentação</option>
+                <option>Transporte</option><option>Estudos</option><option>Saúde</option><option>Lazer</option>
+                <option>Compras</option><option>Dívidas</option><option>Outros</option>
               </select>
+
+              <input id="expenseSubcategory" placeholder="Subcategoria: aluguel, internet, delivery..." />
+
+              <select id="expenseType">
+                <option value="fixo">Fixo</option>
+                <option value="variavel">Variável</option>
+              </select>
+
+              <select id="expenseEssential">
+                <option value="sim">Essencial</option>
+                <option value="nao">Não essencial</option>
+              </select>
+
               <input id="expenseDesc" placeholder="Descrição do gasto" />
               <input id="expenseValue" type="number" step="0.01" placeholder="Valor" />
+
               <select id="expenseOwner">
                 <option>Eu</option>
                 <option>Parceiro(a)</option>
                 <option>Casal</option>
               </select>
+
               <button onclick="addExpense()">Adicionar</button>
             </div>
-            <table><thead><tr><th>Categoria</th><th>Descrição</th><th>Dono</th><th>Valor</th><th></th></tr></thead><tbody id="expenseTable"></tbody></table>
+
+            <p class="small">
+              Exemplo: Casa + Aluguel + Fixo + Essencial. Delivery: Alimentação + Delivery + Variável + Não essencial.
+            </p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Categoria</th>
+                  <th>Subcategoria</th>
+                  <th>Tipo</th>
+                  <th>Essencial</th>
+                  <th>Descrição</th>
+                  <th>Dono</th>
+                  <th>Valor</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="expenseTable"></tbody>
+            </table>
           </section>
         </div>
 
@@ -513,7 +548,7 @@
       </div>
     </div>
 
-    <input id="importFile" class="hidden" type="file" accept=".json" onchange="importJSON(event)" />
+    <input id="importFile" class="hidden" type="file" accept=".json,.txt" onchange="importJSON(event)" />
   </main>
 
   <script>
@@ -535,6 +570,17 @@
 
     function data() {
       if (!db.months[currentMonth]) db.months[currentMonth] = monthModel();
+
+      db.months[currentMonth].expenses = (db.months[currentMonth].expenses || []).map(item => ({
+        category: item.category || item.categoria || "Outros",
+        subcategory: item.subcategory || item.subcategoria || item.desc || item.descricao || "Gasto",
+        type: item.type || item.tipo || "variavel",
+        essential: item.essential || item.essencial || "nao",
+        desc: item.desc || item.descricao || item.description || item.nome || "Gasto",
+        value: Number(item.value || item.valor || 0),
+        owner: item.owner || item.dono || "Eu"
+      }));
+
       return db.months[currentMonth];
     }
 
@@ -588,12 +634,28 @@
 
     function addExpense() {
       const category = document.getElementById("expenseCategory").value;
+      const subcategory = document.getElementById("expenseSubcategory").value.trim();
+      const type = document.getElementById("expenseType").value;
+      const essential = document.getElementById("expenseEssential").value;
       const desc = document.getElementById("expenseDesc").value.trim();
       const value = getNumber("expenseValue");
       const owner = document.getElementById("expenseOwner").value;
-      if (!desc || !value) return alert("Preencha descrição e valor.");
-      data().expenses.push({ category, desc, value, owner });
-      clearInputs(["expenseDesc", "expenseValue"]);
+
+      if (!subcategory || !desc || !value) {
+        return alert("Preencha subcategoria, descrição e valor.");
+      }
+
+      data().expenses.push({
+        category,
+        subcategory,
+        type,
+        essential,
+        desc,
+        value,
+        owner
+      });
+
+      clearInputs(["expenseSubcategory", "expenseDesc", "expenseValue"]);
       saveData(false);
     }
 
@@ -684,6 +746,53 @@
       return Object.entries(map).map(([category, value]) => ({ category, value })).filter(item => item.value > 0).sort((a, b) => b.value - a.value);
     }
 
+
+    function reductionOpportunityRanking() {
+      const map = {};
+
+      data().expenses.forEach(item => {
+        const type = item.type || "variavel";
+        const essential = item.essential || "nao";
+
+        if (type === "variavel" && essential === "nao") {
+          const key = item.subcategory
+            ? `${item.category} - ${item.subcategory}`
+            : item.category;
+
+          map[key] = (map[key] || 0) + Number(item.value || 0);
+        }
+      });
+
+      data().cards.forEach(item => {
+        map["Cartões"] = (map["Cartões"] || 0) + Number(item.bill || 0);
+      });
+
+      return Object.entries(map)
+        .map(([category, value]) => ({ category, value }))
+        .filter(item => item.value > 0)
+        .sort((a, b) => b.value - a.value);
+    }
+
+    function essentialTotals() {
+      let fixedEssential = 0;
+      let variableEssential = 0;
+      let variableNonEssential = 0;
+      let fixedNonEssential = 0;
+
+      data().expenses.forEach(item => {
+        const value = Number(item.value || 0);
+        const type = item.type || "variavel";
+        const essential = item.essential || "nao";
+
+        if (type === "fixo" && essential === "sim") fixedEssential += value;
+        if (type === "variavel" && essential === "sim") variableEssential += value;
+        if (type === "variavel" && essential === "nao") variableNonEssential += value;
+        if (type === "fixo" && essential === "nao") fixedNonEssential += value;
+      });
+
+      return { fixedEssential, variableEssential, variableNonEssential, fixedNonEssential };
+    }
+
     function renderTable(id, rows) {
       const el = document.getElementById(id);
       if (el) el.innerHTML = rows.join("");
@@ -712,39 +821,63 @@
     }
 
     function renderSavingAssistant() {
-      const ranking = categoryRanking();
+      const opportunities = reductionOpportunityRanking();
       const box = document.getElementById("savingAssistant");
-      const t = totals();
+      const essentials = essentialTotals();
 
-      if (!ranking.length) {
+      if (!opportunities.length) {
         box.className = "alert ok";
-        box.innerText = "Preencha seus gastos para receber sugestões.";
         document.getElementById("possibleSaving").innerText = money(0);
+        box.innerHTML = `
+          Nenhum gasto variável não essencial foi encontrado para sugerir corte.<br><br>
+          🔒 Gastos fixos essenciais: <b>${money(essentials.fixedEssential)}</b><br>
+          🔓 Variáveis essenciais: <b>${money(essentials.variableEssential)}</b><br><br>
+          Isso significa que os gastos cadastrados até agora parecem necessários.
+        `;
         return;
       }
 
-      const reducible = ranking.filter(item => item.category !== "Dívidas");
-      const focus = reducible[0] || ranking[0];
+      const focus = opportunities[0];
       const save10 = focus.value * 0.10;
       const save20 = focus.value * 0.20;
       const save30 = focus.value * 0.30;
+
       document.getElementById("possibleSaving").innerText = money(save20);
 
       let tone = "ok";
+      const t = totals();
       if (t.incomes && (focus.value / t.incomes) > 0.30) tone = "danger";
       else if (t.incomes && (focus.value / t.incomes) > 0.18) tone = "";
 
       let suggestion = "Defina um teto para essa categoria no próximo mês e acompanhe semanalmente.";
-      if (focus.category === "Relacionamento") suggestion = "Não precisa cortar momentos importantes; defina um teto mensal para encontros, presentes e planos do casal.";
-      if (focus.category === "Alimentação") suggestion = "Separe mercado, delivery e restaurante. Normalmente o maior corte vem do delivery.";
-      if (focus.category === "Cartões") suggestion = "Evite novas compras parceladas até a fatura ficar mais leve.";
+
+      if (focus.category.includes("Relacionamento")) {
+        suggestion = "Não precisa cortar momentos importantes; defina um teto mensal para encontros, presentes e planos do casal.";
+      }
+
+      if (focus.category.includes("Alimentação") || focus.category.toLowerCase().includes("delivery")) {
+        suggestion = "Separe mercado, delivery e restaurante. Normalmente o maior corte vem do delivery e restaurante.";
+      }
+
+      if (focus.category.includes("Cartões")) {
+        suggestion = "Revise compras parceladas e compras por impulso. Cartão não é fixo por padrão: ele entra como oportunidade de revisão.";
+      }
 
       box.className = "alert " + tone;
-      box.innerHTML = `<b>Categoria para revisar primeiro:</b> ${focus.category}<br>
-        Você gastou ${money(focus.value)} nessa área.<br><br>
+      box.innerHTML = `
+        <b>Categoria para revisar primeiro:</b> ${focus.category}<br>
+        Esse valor foi considerado porque é <b>variável</b> e <b>não essencial</b>.<br>
+        Valor: <b>${money(focus.value)}</b><br><br>
+
         💡 Reduzindo 10%: <b>${money(save10)}</b><br>
         💡 Reduzindo 20%: <b>${money(save20)}</b><br>
-        💡 Reduzindo 30%: <b>${money(save30)}</b><br><br>${suggestion}`;
+        💡 Reduzindo 30%: <b>${money(save30)}</b><br><br>
+
+        ${suggestion}<br><br>
+
+        🔒 Fixos essenciais cadastrados: <b>${money(essentials.fixedEssential)}</b><br>
+        Esses não entram como sugestão de corte automático.
+      `;
     }
 
     function renderSummary() {
@@ -911,9 +1044,21 @@
         `<tr><td>${item.desc}</td><td>${item.owner || "Eu"}</td><td>${money(item.value)}</td><td><button class="btn-red" onclick="removeItem('incomes',${index})">Excluir</button></td></tr>`
       ));
 
-      renderTable("expenseTable", data().expenses.map((item, index) =>
-        `<tr><td><span class="pill">${item.category}</span></td><td>${item.desc}</td><td>${item.owner || "Eu"}</td><td>${money(item.value)}</td><td><button class="btn-red" onclick="removeItem('expenses',${index})">Excluir</button></td></tr>`
-      ));
+      renderTable("expenseTable", data().expenses.map((item, index) => {
+        const type = item.type || "variavel";
+        const essential = item.essential || "nao";
+
+        return `<tr>
+          <td><span class="pill">${item.category || "Outros"}</span></td>
+          <td>${item.subcategory || "-"}</td>
+          <td>${type === "fixo" ? "Fixo" : "Variável"}</td>
+          <td>${essential === "sim" ? "Sim" : "Não"}</td>
+          <td>${item.desc}</td>
+          <td>${item.owner || "Eu"}</td>
+          <td>${money(item.value)}</td>
+          <td><button class="btn-red" onclick="removeItem('expenses',${index})">Excluir</button></td>
+        </tr>`;
+      }));
 
       renderTable("loanTable", data().loans.map((item, index) =>
         `<tr><td>${item.name}<br><span class="small">${item.left} parcelas • total ${money(item.installment * item.left)}</span></td><td>${money(item.installment)}</td><td>${item.due ? "dia " + item.due : "-"}</td><td>${payoffDate(item.left)}</td><td><button class="btn-red" onclick="removeItem('loans',${index})">Excluir</button></td></tr>`
@@ -953,162 +1098,139 @@
     }
 
     function normalizeImportedBackup(imported) {
-      // Formato atual v5
-      if (imported && imported.months) {
-        if (!imported.couple) {
-          imported.couple = { enabled: false, personA: "Eu", personB: "Parceiro(a)" };
-        }
-        if (!imported.theme) {
-          imported.theme = "light";
-        }
-        return imported;
-      }
+      const safeNumber = value => Number(value || 0);
 
-      // Formato antigo v2/v3 em português: { meses: { ... } }
-      if (imported && imported.meses) {
-        const converted = {
-          theme: imported.theme || "light",
-          couple: { enabled: false, personA: "Eu", personB: "Parceiro(a)" },
-          months: {}
-        };
-
-        Object.keys(imported.meses).forEach(monthKey => {
-          const oldMonth = imported.meses[monthKey] || {};
-
-          const newMonth = {
-            monthGoal: Number(oldMonth.meta || oldMonth.monthGoal || 0),
-            notes: oldMonth.observacoes || oldMonth.notes || "",
-            incomes: [],
-            expenses: [],
-            loans: [],
-            cards: [],
-            goals: []
-          };
-
-          // receitas antigas
-          (oldMonth.receitas || oldMonth.incomes || []).forEach(item => {
-            newMonth.incomes.push({
-              desc: item.desc || item.descricao || item.description || "Receita",
-              value: Number(item.valor || item.value || 0),
-              owner: item.owner || "Eu"
-            });
-          });
-
-          // gastos fixos antigos
-          (oldMonth.fixos || []).forEach(item => {
-            newMonth.expenses.push({
-              category: item.categoria || item.category || "Moradia",
-              desc: item.desc || item.descricao || item.description || "Gasto fixo",
-              value: Number(item.valor || item.value || 0),
-              owner: item.owner || "Eu"
-            });
-          });
-
-          // gastos variáveis antigos
-          (oldMonth.variaveis || []).forEach(item => {
-            newMonth.expenses.push({
-              category: item.categoria || item.category || "Outros",
-              desc: item.desc || item.descricao || item.description || "Gasto variável",
-              value: Number(item.valor || item.value || 0),
-              owner: item.owner || "Eu"
-            });
-          });
-
-          // gastos em formato novo/parcial
-          (oldMonth.expenses || []).forEach(item => {
-            newMonth.expenses.push({
-              category: item.category || item.categoria || "Outros",
-              desc: item.desc || item.descricao || item.description || "Gasto",
-              value: Number(item.value || item.valor || 0),
-              owner: item.owner || "Eu"
-            });
-          });
-
-          // empréstimos antigos
-          (oldMonth.emprestimos || oldMonth.loans || []).forEach(item => {
-            newMonth.loans.push({
-              name: item.nome || item.name || item.credor || "Empréstimo",
-              installment: Number(item.parcela || item.installment || 0),
-              left: Number(item.restantes || item.qtd || item.left || 1),
-              due: Number(item.vencimento || item.due || 0)
-            });
-          });
-
-          // cartões antigos
-          (oldMonth.cartoes || oldMonth.cards || []).forEach(item => {
-            newMonth.cards.push({
-              name: item.nome || item.name || "Cartão",
-              bill: Number(item.valor || item.bill || 0),
-              limit: Number(item.limite || item.limit || 0),
-              due: Number(item.venc || item.due || 0)
-            });
-          });
-
-          // metas antigas
-          (oldMonth.goals || oldMonth.metas || []).forEach(item => {
-            newMonth.goals.push({
-              name: item.name || item.nome || "Meta",
-              target: Number(item.target || item.valorObjetivo || item.objetivo || 0),
-              saved: Number(item.saved || item.guardado || 0),
-              monthly: Number(item.monthly || item.mensal || 0)
-            });
-          });
-
-          converted.months[monthKey] = newMonth;
-        });
-
-        return converted;
-      }
-
-      // Caso o arquivo seja apenas um mês exportado manualmente
-      if (imported && (imported.receitas || imported.fixos || imported.variaveis || imported.emprestimos || imported.cartoes)) {
-        const converted = {
-          theme: "light",
-          couple: { enabled: false, personA: "Eu", personB: "Parceiro(a)" },
-          months: {}
-        };
-
-        converted.months[currentMonth] = {
-          monthGoal: Number(imported.meta || 0),
-          notes: imported.observacoes || "",
-          incomes: (imported.receitas || []).map(item => ({
-            desc: item.desc || item.descricao || "Receita",
-            value: Number(item.valor || item.value || 0),
-            owner: "Eu"
-          })),
-          expenses: [
-            ...(imported.fixos || []).map(item => ({
-              category: item.categoria || "Moradia",
-              desc: item.desc || item.descricao || "Gasto fixo",
-              value: Number(item.valor || item.value || 0),
-              owner: "Eu"
-            })),
-            ...(imported.variaveis || []).map(item => ({
-              category: item.categoria || "Outros",
-              desc: item.desc || item.descricao || "Gasto variável",
-              value: Number(item.valor || item.value || 0),
-              owner: "Eu"
-            }))
-          ],
-          loans: (imported.emprestimos || []).map(item => ({
-            name: item.nome || item.name || "Empréstimo",
-            installment: Number(item.parcela || item.installment || 0),
-            left: Number(item.restantes || item.qtd || item.left || 1),
-            due: Number(item.vencimento || item.due || 0)
-          })),
-          cards: (imported.cartoes || []).map(item => ({
-            name: item.nome || item.name || "Cartão",
-            bill: Number(item.valor || item.bill || 0),
-            limit: Number(item.limite || item.limit || 0),
-            due: Number(item.venc || item.due || 0)
-          })),
+      const normalizedMonth = oldMonth => {
+        const newMonth = {
+          monthGoal: safeNumber(oldMonth.meta || oldMonth.monthGoal || oldMonth.metaValor),
+          notes: oldMonth.observacoes || oldMonth.notes || "",
+          incomes: [],
+          expenses: [],
+          loans: [],
+          cards: [],
           goals: []
         };
 
-        return converted;
+        const receitas = oldMonth.receitas || oldMonth.incomes || oldMonth.receita || [];
+        receitas.forEach(item => {
+          newMonth.incomes.push({
+            desc: item.desc || item.descricao || item.description || item.nome || "Receita",
+            value: safeNumber(item.valor || item.value || item.total),
+            owner: item.owner || item.dono || "Eu"
+          });
+        });
+
+        const fixos = oldMonth.fixos || oldMonth.gastosFixos || oldMonth.fixed || [];
+        fixos.forEach(item => {
+          newMonth.expenses.push({
+            category: item.categoria || item.category || "Moradia",
+            desc: item.desc || item.descricao || item.description || item.nome || "Gasto fixo",
+            value: safeNumber(item.valor || item.value || item.total),
+            owner: item.owner || item.dono || "Eu"
+          });
+        });
+
+        const variaveis = oldMonth.variaveis || oldMonth.gastosVariaveis || oldMonth.variables || [];
+        variaveis.forEach(item => {
+          newMonth.expenses.push({
+            category: item.categoria || item.category || "Outros",
+            desc: item.desc || item.descricao || item.description || item.nome || "Gasto variável",
+            value: safeNumber(item.valor || item.value || item.total),
+            owner: item.owner || item.dono || "Eu"
+          });
+        });
+
+        const expenses = oldMonth.expenses || oldMonth.gastos || [];
+        expenses.forEach(item => {
+          newMonth.expenses.push({
+            category: item.category || item.categoria || "Outros",
+            desc: item.desc || item.descricao || item.description || item.nome || "Gasto",
+            value: safeNumber(item.value || item.valor || item.total),
+            owner: item.owner || item.dono || "Eu"
+          });
+        });
+
+        const emprestimos = oldMonth.emprestimos || oldMonth.loans || oldMonth.dividas || [];
+        emprestimos.forEach(item => {
+          newMonth.loans.push({
+            name: item.nome || item.name || item.credor || item.banco || "Empréstimo",
+            installment: safeNumber(item.parcela || item.installment || item.valorParcela || item.valor),
+            left: safeNumber(item.restantes || item.qtd || item.left || item.parcelasRestantes || 1),
+            due: safeNumber(item.vencimento || item.due || item.venc || 0)
+          });
+        });
+
+        const cartoes = oldMonth.cartoes || oldMonth.cards || oldMonth.creditCards || [];
+        cartoes.forEach(item => {
+          newMonth.cards.push({
+            name: item.nome || item.name || item.cartao || "Cartão",
+            bill: safeNumber(item.valor || item.bill || item.fatura || item.total),
+            limit: safeNumber(item.limite || item.limit || 0),
+            due: safeNumber(item.venc || item.due || item.vencimento || 0)
+          });
+        });
+
+        const metas = oldMonth.goals || oldMonth.metas || oldMonth.objetivos || [];
+        metas.forEach(item => {
+          newMonth.goals.push({
+            name: item.name || item.nome || item.desc || "Meta",
+            target: safeNumber(item.target || item.valorObjetivo || item.objetivo || item.meta),
+            saved: safeNumber(item.saved || item.guardado || item.valorGuardado),
+            monthly: safeNumber(item.monthly || item.mensal || item.valorMensal)
+          });
+        });
+
+        return newMonth;
+      };
+
+      // Formato atual v5/v5.1/v5.2
+      if (imported && typeof imported === "object" && imported.months) {
+        return {
+          theme: imported.theme || "light",
+          couple: imported.couple || { enabled: false, personA: "Eu", personB: "Parceiro(a)" },
+          months: Object.fromEntries(
+            Object.entries(imported.months).map(([key, value]) => [key, normalizedMonth(value || {})])
+          )
+        };
       }
 
-      throw new Error("Backup inválido");
+      // Formato antigo em português: { meses: { ... } }
+      if (imported && typeof imported === "object" && imported.meses) {
+        return {
+          theme: imported.theme || "light",
+          couple: imported.couple || { enabled: false, personA: "Eu", personB: "Parceiro(a)" },
+          months: Object.fromEntries(
+            Object.entries(imported.meses).map(([key, value]) => [key, normalizedMonth(value || {})])
+          )
+        };
+      }
+
+      // Formato antigo salvo diretamente como mês único
+      if (
+        imported &&
+        typeof imported === "object" &&
+        (
+          imported.receitas ||
+          imported.fixos ||
+          imported.variaveis ||
+          imported.emprestimos ||
+          imported.cartoes ||
+          imported.incomes ||
+          imported.expenses ||
+          imported.loans ||
+          imported.cards
+        )
+      ) {
+        return {
+          theme: "light",
+          couple: { enabled: false, personA: "Eu", personB: "Parceiro(a)" },
+          months: {
+            [currentMonth]: normalizedMonth(imported)
+          }
+        };
+      }
+
+      throw new Error("Formato não reconhecido");
     }
 
     function importJSON(event) {
@@ -1119,16 +1241,34 @@
 
       reader.onload = event => {
         try {
-          const imported = JSON.parse(event.target.result);
+          const text = String(event.target.result || "").trim();
+
+          if (!text) {
+            alert("O arquivo está vazio.");
+            return;
+          }
+
+          if (text.startsWith("<!DOCTYPE") || text.startsWith("<html") || text.includes("<body")) {
+            alert("Você selecionou um arquivo HTML. Para importar dados, escolha o arquivo de backup JSON exportado pelo botão 'Exportar backup JSON'.");
+            return;
+          }
+
+          if (text.includes(";") && !text.startsWith("{") && !text.startsWith("[")) {
+            alert("Você selecionou um CSV/Excel. CSV serve para abrir no Excel, mas não para restaurar backup. Para restaurar, use o JSON.");
+            return;
+          }
+
+          const imported = JSON.parse(text);
           const normalized = normalizeImportedBackup(imported);
 
           db = normalized;
           localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
           render();
 
-          alert("Backup importado com sucesso!");
+          alert("Backup importado com sucesso! Se os dados não aparecerem, confira o mês selecionado no topo.");
         } catch (error) {
-          alert("Não consegui importar. Esse arquivo precisa ser um backup JSON exportado pelo app. Se for um CSV ou HTML, ele não entra pelo botão de backup JSON.");
+          console.error("Erro ao importar backup:", error);
+          alert("Não consegui importar esse arquivo. Ele precisa ser um JSON válido. Abra o arquivo no bloco de notas: ele deve começar com { e não com <html>.");
         }
       };
 
@@ -1141,13 +1281,13 @@
 
     function exportCSV() {
       const d = data();
-      const rows = [["Tipo", "Categoria", "Descrição", "Dono", "Valor", "Info", "Mês"].map(csvEscape).join(";")];
+      const rows = [["Tipo", "Categoria", "Subcategoria", "Tipo de gasto", "Essencial", "Descrição", "Dono", "Valor", "Info", "Mês"].map(csvEscape).join(";")];
 
-      d.incomes.forEach(i => rows.push(["Receita", "", i.desc, i.owner, i.value, "", currentMonth].map(csvEscape).join(";")));
-      d.expenses.forEach(i => rows.push(["Gasto", i.category, i.desc, i.owner, i.value, "", currentMonth].map(csvEscape).join(";")));
-      d.loans.forEach(i => rows.push(["Empréstimo", "Dívidas", i.name, "", i.installment, `${i.left} parcelas restantes`, currentMonth].map(csvEscape).join(";")));
-      d.cards.forEach(i => rows.push(["Cartão", "Cartões", i.name, "", i.bill, `Vencimento dia ${i.due}`, currentMonth].map(csvEscape).join(";")));
-      d.goals.forEach(i => rows.push(["Objetivo", "Metas", i.name, "", i.saved, `Meta ${i.target}`, currentMonth].map(csvEscape).join(";")));
+      d.incomes.forEach(i => rows.push(["Receita", "", "", "", "", i.desc, i.owner, i.value, "", currentMonth].map(csvEscape).join(";")));
+      d.expenses.forEach(i => rows.push(["Gasto", i.category, i.subcategory || "", i.type || "variavel", i.essential || "nao", i.desc, i.owner, i.value, "", currentMonth].map(csvEscape).join(";")));
+      d.loans.forEach(i => rows.push(["Empréstimo", "Dívidas", "", "fixo", "sim", i.name, "", i.installment, `${i.left} parcelas restantes`, currentMonth].map(csvEscape).join(";")));
+      d.cards.forEach(i => rows.push(["Cartão", "Cartões", "", "variavel", "nao", i.name, "", i.bill, `Vencimento dia ${i.due}`, currentMonth].map(csvEscape).join(";")));
+      d.goals.forEach(i => rows.push(["Objetivo", "Metas", "", "", "", i.name, "", i.saved, `Meta ${i.target}`, currentMonth].map(csvEscape).join(";")));
 
       const blob = new Blob(["\ufeff" + rows.join("\n")], { type: "text/csv;charset=utf-8;" });
       download(blob, `vida-financeira-${currentMonth}.csv`);
